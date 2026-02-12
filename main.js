@@ -74,9 +74,6 @@ const BUILDING_TEXTURES = {
     // Add more textures here as needed
 };
 
-const ROAD_TEXTURE = 'textures/asphalt_track_2k_blend/asphalt_track_diff_2k.jpg';
-const ROAD_TEXTURE_REPEAT = 20;
-
 // =============================================
 // === BUILDING NAMES - EDIT THIS ===
 // =============================================
@@ -202,22 +199,43 @@ const TEXTURE_ROUGHNESS = 0.7;
 const TEXTURE_METALNESS = 0.2;
 // =============================================
 
-// Texture loader and cache - DEFINED HERE
+// Texture loader and cache
 const textureLoader = new THREE.TextureLoader();
 const textureCache = {};
 
 // =============================================
-// === GRASS TEXTURE - MOVED HERE (AFTER textureLoader) ===
+// === GRASS TEXTURE ===
 // =============================================
 const grassTexture = textureLoader.load('textures/Grass004_2K-JPG/Grass004_2K-JPG_Color.jpg');
 grassTexture.wrapS = THREE.RepeatWrapping;
 grassTexture.wrapT = THREE.RepeatWrapping;
 grassTexture.repeat.set(30, 30);
+grassTexture.anisotropy = 16;
 
 const grassMaterial = new THREE.MeshStandardMaterial({
     map: grassTexture,
     roughness: 0.9,
     metalness: 0.1
+});
+// =============================================
+
+// =============================================
+// === ROAD TEXTURE - COMPLETELY FIXED ===
+// =============================================
+const roadTexture = textureLoader.load('textures/asphalt_track_2k_blend/asphalt_track_diff_2k.jpg');
+roadTexture.wrapS = THREE.RepeatWrapping;
+roadTexture.wrapT = THREE.RepeatWrapping;
+roadTexture.repeat.set(100, 2); // High repeat for visibility
+roadTexture.anisotropy = 16; // Makes texture sharp at angles
+
+const texturedRoadMaterial = new THREE.MeshStandardMaterial({
+    map: roadTexture,
+    roughness: 0.7,
+    metalness: 0.3,
+    side: THREE.DoubleSide,
+    color: 0xcccccc, // Lightens the texture
+    emissive: 0x333333,
+    emissiveIntensity: 0.2
 });
 // =============================================
 
@@ -237,9 +255,8 @@ function getTextureForBuilding(buildingId) {
 }
 
 // =============================================
-// === BUILDING INFO UI - SHOWS CLICKED BUILDING ===
+// === BUILDING INFO UI ===
 // =============================================
-// Create info panel in top-left corner
 const infoPanel = document.createElement('div');
 infoPanel.style.position = 'absolute';
 infoPanel.style.top = '20px';
@@ -268,12 +285,10 @@ infoPanel.innerHTML = `
 `;
 document.body.appendChild(infoPanel);
 
-// Store the original emissive colors to restore them
 const originalEmissiveMap = new WeakMap();
 // =============================================
 
 // --- Ground Plane ---
-// NOW USING GRASS TEXTURE
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), grassMaterial);
 ground.position.z = -0.1;
 ground.receiveShadow = true;
@@ -332,6 +347,9 @@ function isInBounds(coords) {
     );
 }
 
+// =============================================
+// === LOAD ROADS WITH TEXTURE - ONLY ONE LINE CHANGED ===
+// =============================================
 function loadGeoJson(url, options) {
     fetch(url)
         .then(res => res.json())
@@ -358,13 +376,16 @@ function loadGeoJson(url, options) {
                         extrudePath: curve
                     });
 
-                    const mesh = new THREE.Mesh(geometry, options.material || roadMaterial);
+                    // *** THIS IS THE ONLY LINE CHANGED ***
+                    const mesh = new THREE.Mesh(geometry, texturedRoadMaterial);
+                    // **************************************
                     
                     mesh.castShadow = false; 
                     mesh.receiveShadow = true; 
                     
                     mesh.position.z = 0.02; 
                     campusGroup.add(mesh);
+                    
                 } else if (feature.geometry.type === 'Polygon') {
                     const polygons = [feature.geometry.coordinates];
                     polygons.forEach(polygon => {
@@ -387,6 +408,7 @@ function loadGeoJson(url, options) {
             });
         });
 }
+// =============================================
 
 // --- Building Logic with Textures and Names ---
 function loadSplitBuildings() {
@@ -421,10 +443,8 @@ function loadSplitBuildings() {
                                 const height = (Number(feature.properties?.estimated_height) || 10) * 3;
                                 const extrudeSettings = { depth: height, bevelEnabled: false };
 
-                                // Get building ID from filename
                                 const buildingId = fileName.replace(/^building_/, '').replace(/\.geojson$/, '');
                                 
-                                // Check if this building has a texture assigned
                                 const texture = getTextureForBuilding(buildingId);
                                 
                                 let material;
@@ -464,7 +484,7 @@ function loadSplitBuildings() {
 }
 
 // =============================================
-// === INTERACTION (Clicking) ===
+// === INTERACTION ===
 // =============================================
 function handlePointerClick(event) {
     const rect = renderer.domElement.getBoundingClientRect();
