@@ -74,8 +74,8 @@ const BUILDING_TEXTURES = {
     // Add more textures here as needed
 };
 
-const ROAD_TEXTURE = 'textures/asphalt_track_2k_blend/asphalt_track_diff_2k.jpg'; // Change this to any texture you want
-const ROAD_TEXTURE_REPEAT = 20; // How many times the texture repeats along the road
+const ROAD_TEXTURE = 'textures/asphalt_track_2k_blend/asphalt_track_diff_2k.jpg';
+const ROAD_TEXTURE_REPEAT = 20;
 
 // =============================================
 // === BUILDING NAMES - EDIT THIS ===
@@ -202,9 +202,24 @@ const TEXTURE_ROUGHNESS = 0.7;
 const TEXTURE_METALNESS = 0.2;
 // =============================================
 
-// Texture loader and cache
+// Texture loader and cache - DEFINED HERE
 const textureLoader = new THREE.TextureLoader();
 const textureCache = {};
+
+// =============================================
+// === GRASS TEXTURE - MOVED HERE (AFTER textureLoader) ===
+// =============================================
+const grassTexture = textureLoader.load('textures/Grass004_2K-JPG/Grass004_2K-JPG_Color.jpg');
+grassTexture.wrapS = THREE.RepeatWrapping;
+grassTexture.wrapT = THREE.RepeatWrapping;
+grassTexture.repeat.set(30, 30);
+
+const grassMaterial = new THREE.MeshStandardMaterial({
+    map: grassTexture,
+    roughness: 0.9,
+    metalness: 0.1
+});
+// =============================================
 
 function getTextureForBuilding(buildingId) {
     const texturePath = BUILDING_TEXTURES[buildingId];
@@ -258,7 +273,8 @@ const originalEmissiveMap = new WeakMap();
 // =============================================
 
 // --- Ground Plane ---
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshStandardMaterial({ color: 0x66bb6a }));
+// NOW USING GRASS TEXTURE
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), grassMaterial);
 ground.position.z = -0.1;
 ground.receiveShadow = true;
 campusGroup.add(ground);
@@ -427,7 +443,6 @@ function loadSplitBuildings() {
 
                                 const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, extrudeSettings), material);
                                 mesh.userData.fileName = buildingId;
-                                // THIS IS THE IMPORTANT LINE - IT USES YOUR CUSTOM BUILDING NAMES
                                 mesh.userData.buildingName = BUILDING_NAMES[buildingId] || feature.properties?.name || `Building ${buildingId}`;
                                 mesh.userData.height = height / 3;
                                 mesh.userData.hasTexture = !!texture;
@@ -460,7 +475,6 @@ function handlePointerClick(event) {
     const intersects = raycaster.intersectObjects(campusGroup.children, true);
     
     if (intersects.length > 0) {
-        // Find the first building mesh (not ground, roads, etc.)
         const buildingMesh = intersects.find(intersect => 
             intersect.object.userData && intersect.object.userData.fileName
         )?.object;
@@ -479,7 +493,6 @@ function handlePointerClick(event) {
 }
 
 function highlightBuilding(mesh) {
-    // Reset previous highlight
     if (highlightedBuilding) {
         if (highlightedBuilding.material) {
             if (Array.isArray(highlightedBuilding.material)) {
@@ -497,7 +510,6 @@ function highlightBuilding(mesh) {
         highlightedBuilding = null;
     }
     
-    // Apply new highlight
     if (mesh && mesh.material) {
         if (Array.isArray(mesh.material)) {
             mesh.material.forEach(mat => {
@@ -540,7 +552,6 @@ function updateBuildingInfo(mesh) {
     const height = mesh.userData.height || 'Unknown';
     const hasTexture = mesh.userData.hasTexture ? 'Yes' : 'No';
     
-    // Get material color if available
     let colorInfo = 'N/A';
     if (mesh.material) {
         if (Array.isArray(mesh.material) && mesh.material[0]?.color) {
